@@ -1,20 +1,15 @@
 version: '3.8'
 
 services:
-  #--- Servidor Web Nginx ---
   nginx:
     image: nginx:alpine
     container_name: Laravel_E-commerce-nginx
-    ports:
-      - "80:80"
+    ports: ["80:80"]
     volumes:
       - ./src:/var/www/html
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - app
-      - vite
+    depends_on: [app, vite]
 
-  #--- Aplicação PHP-FPM (Laravel) ---
   app:
     build:
       context: .
@@ -30,33 +25,33 @@ services:
       - "DB_USERNAME=admin"
       - "DB_PASSWORD=admin"
 
-  #--- Banco de Dados (MySQL) ---
   db:
     image: mysql:8.0
     container_name: Laravel_E-commerce-db
     restart: unless-stopped
-    ports:
-      - "3306:3306"
+    ports: ["3306:3306"]
     environment:
-      MYSQL_DATABASE: laravel_ecommerce
-      MYSQL_USER: admin
-      MYSQL_PASSWORD: admin
-      MYSQL_ROOT_PASSWORD: "root_password_secure"
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - ./db-data:/var/lib/mysql
 
-  #--- Servidor de Desenvolvimento Vite (Segundo Plano) ---
+  # ... (bloco do 'db' acima)
+
   vite:
-    image: node:18-alpine
-    container_name: Laravel_E-commerce-vite
+    # Use a MESMA imagem/build do serviço 'app'
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: ${PROJECT_NAME}-vite
     working_dir: /var/www/html
-    ports:
-      - "5173:5173" # Porta padrão do Vite
+    ports: ["5173:5173"]
     volumes:
       - ./src:/var/www/html
+    # O entrypoint agora usará o NPM instalado DENTRO da imagem do app
     entrypoint: ["npm", "run", "dev"]
 
-  #--- Composer (para comandos únicos) ---
   composer:
     image: composer:latest
     container_name: Laravel_E-commerce-composer
@@ -65,7 +60,6 @@ services:
       - ./src:/var/www/html
     entrypoint: ["composer"]
 
-  #--- Artisan (para comandos únicos) ---
   artisan:
     build:
       context: .
@@ -75,6 +69,4 @@ services:
     volumes:
       - ./src:/var/www/html
     entrypoint: ["php", "artisan"]
-    depends_on:
-      - db
-
+    depends_on: [db]
